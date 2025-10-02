@@ -1,0 +1,6 @@
+[submodule "pjproject"]
+	url = https://github.com/NgoMinhToan/pjproject.git
+	branch = main
+[submodule "pjsip_sdk"]
+	url = https://github.com/NgoMinhToan/pjsip_sdk.git
+	branch = my_working_branch
