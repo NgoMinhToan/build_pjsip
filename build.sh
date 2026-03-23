@@ -1,9 +1,18 @@
+# Tránh lỗi
+PKG_CONFIG_PATH=
+LDFLAGS=
+CPPFLAGS=
+CFLAGS=
+CXXFLAGS=
+PKG_CONFIG_LIBDIR=/dev/null
+
+# output
 BUILD_OUTPUT_DIR=./output
+mkdir -p $BUILD_OUTPUT_DIR/android
+mkdir -p $BUILD_OUTPUT_DIR/ios
+
 ANDROID_OUTPUT=$(realpath "$BUILD_OUTPUT_DIR/android")
 IOS_OUTPUT=$(realpath "$BUILD_OUTPUT_DIR/ios")
-
-mkdir -p $ANDROID_OUTPUT
-mkdir -p $IOS_OUTPUT
 
 SCRIPT_DIR=$(dirname $(realpath "$0"))
 cd $SCRIPT_DIR/pjproject-apple-platforms

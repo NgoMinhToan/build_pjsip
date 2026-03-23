@@ -2,7 +2,7 @@
 SCRIPT_DIR=$(dirname $(realpath "$0"))
 export PJPROJECT_DIR=$SCRIPT_DIR/pjproject
 export OUTPUT_DIR=$(realpath "$1")
-export OBOE_DIR=$SCRIPT_DIR/oboe-1.9.3
+export OBOE_DIR=$SCRIPT_DIR/oboe-1.10.0
 export OPENSSL_DIR=$SCRIPT_DIR/openssl-3.4.2
 export ANDROID_NDK_ROOT=/Users/ngominhtoan/Library/Android/sdk/ndk/28.2.13676358
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home
@@ -34,7 +34,7 @@ JNILIBS_DEST=$OUTPUT_DIR/src/main/jniLibs
 JNILIBS_SRC=$PJPROJECT_DIR/pjsip-apps/src/swig/java/android/pjsua2/src/main/jniLibs
 
 # export NDK_TOOLCHAIN_VERSION=4.9
-export ANDROID_TARGET=35
+export APP_PLATFORM=35
 
 $SCRIPT_DIR/android_script.sh android-arm armeabi-v7a
 mkdir -p $JNILIBS_DEST/armeabi-v7a

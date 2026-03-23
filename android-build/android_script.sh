@@ -11,10 +11,10 @@ cd $OPENSSL_DIR
 if [ "$ARCH" = "android-arm" ]; then
     # no-asm with armeabi-v7a
     echo "Building for $ARCH (disable asm)..."
-    ./Configure $ARCH -D__ANDROID_API__=$ANDROID_TARGET no-asm
+    ./Configure $ARCH -D__ANDROID_API__=$APP_PLATFORM no-asm
 else
     echo "Building for $ARCH..."
-    ./Configure $ARCH -D__ANDROID_API__=$ANDROID_TARGET
+    ./Configure $ARCH -D__ANDROID_API__=$APP_PLATFORM
 fi
 make clean && make
 
@@ -30,7 +30,7 @@ ls lib
 cd $PJPROJECT_DIR
 
 make distclean
-./configure-android -with-ssl=$OPENSSL_DIR --with-oboe=$OBOE_DIR
+./configure-android --use-ndk-cflags -with-ssl=$OPENSSL_DIR --with-oboe=$OBOE_DIR
 make dep && make clean && make
 
 SAMPLE_PROJECT_DIR=$PJPROJECT_DIR/pjsip-apps/src/swig/java/android
