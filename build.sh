@@ -209,16 +209,28 @@ while [ $# -gt 0 ]; do
 done
 
 # Áp dụng các giá trị ghi đè nếu người dùng truyền
-[ -n "$CUSTOM_PJSIP_VER" ]   && export PJSIP_VERSION="$CUSTOM_PJSIP_VER"
-[ -n "$CUSTOM_OPENSSL_VER" ] && export OPENSSL_VERSION="$CUSTOM_OPENSSL_VER"
-[ -n "$CUSTOM_OBOE_VER" ]    && export OBOE_VERSION="$CUSTOM_OBOE_VER"
-[ -n "$CUSTOM_OBOE" ]        && export ENABLE_OBOE="$CUSTOM_OBOE"
-[ -n "$CUSTOM_VIDEO" ]       && export ENABLE_VIDEO="$CUSTOM_VIDEO"
-[ -n "$CUSTOM_SSL" ]         && export ENABLE_SSL="$CUSTOM_SSL"
-[ -n "$CUSTOM_ABIS" ]        && export ANDROID_ABIS="$CUSTOM_ABIS"
-[ -n "$CUSTOM_TARGETS" ]     && export IOS_TARGETS="$CUSTOM_TARGETS"
-[ -n "$CUSTOM_NDK" ]         && export ANDROID_NDK_ROOT="$CUSTOM_NDK"
-[ -n "$CUSTOM_JAVA" ]        && export JAVA_HOME="$CUSTOM_JAVA"
+[ -n "$CUSTOM_PJSIP_VER" ]   && PJSIP_VERSION="$CUSTOM_PJSIP_VER"
+[ -n "$CUSTOM_OPENSSL_VER" ] && OPENSSL_VERSION="$CUSTOM_OPENSSL_VER"
+[ -n "$CUSTOM_OBOE_VER" ]    && OBOE_VERSION="$CUSTOM_OBOE_VER"
+[ -n "$CUSTOM_OBOE" ]        && ENABLE_OBOE="$CUSTOM_OBOE"
+[ -n "$CUSTOM_VIDEO" ]       && ENABLE_VIDEO="$CUSTOM_VIDEO"
+[ -n "$CUSTOM_SSL" ]         && ENABLE_SSL="$CUSTOM_SSL"
+[ -n "$CUSTOM_ABIS" ]        && ANDROID_ABIS="$CUSTOM_ABIS"
+[ -n "$CUSTOM_TARGETS" ]     && IOS_TARGETS="$CUSTOM_TARGETS"
+[ -n "$CUSTOM_NDK" ]         && ANDROID_NDK_ROOT="$CUSTOM_NDK"
+[ -n "$CUSTOM_JAVA" ]        && JAVA_HOME="$CUSTOM_JAVA"
+
+export PJSIP_VERSION
+export OPENSSL_VERSION
+export OBOE_VERSION
+export ENABLE_OBOE
+export ENABLE_VIDEO
+export ENABLE_SSL
+export ANDROID_ABIS
+export IOS_TARGETS
+export ANDROID_NDK_ROOT
+export JAVA_HOME
+export OUTPUT_DIR
 export RESUME_MODE="$CUSTOM_RESUME"
 
 # Nếu người dùng chọn clean hoặc status

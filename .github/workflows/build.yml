@@ -1,0 +1,129 @@
+name: Build PJSIP (Android & iOS)
+
+'on':
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Mục tiêu biên dịch (all, android, ios)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - android
+          - ios
+      with_oboe:
+        description: 'Bật hỗ trợ Oboe audio low-latency (Android)'
+        required: false
+        default: true
+        type: boolean
+      with_video:
+        description: 'Bật hỗ trợ Video (VideoToolbox / Media)'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build PJSIP Libraries
+    runs-on: macos-14
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Build Dependencies (SWIG)
+        run: |
+          echo "Cài đặt SWIG thông qua Homebrew..."
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install swig
+          swig -version
+
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            android-build/android-ndk-*
+          key: ${{ runner.os }}-ndk-r28b
+          restore-keys: |
+            ${{ runner.os }}-ndk-
+
+      - name: Cache Downloaded Archives (OpenSSL, Oboe)
+        uses: actions/cache@v4
+        with:
+          path: |
+            android-build/openssl-*.tar.gz
+            android-build/oboe-*.aar
+            android-build/oboe-*.zip
+          key: ${{ runner.os }}-deps-${{ hashFiles('config.default.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      - name: Set Executable Permissions
+        run: |
+          chmod +x build.sh scripts/*.sh
+
+      - name: Execute PJSIP Build
+        run: |
+          TARGET="all"
+          EXTRA_FLAGS=()
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET="${{ inputs.target }}"
+            if [ "${{ inputs.with_oboe }}" = "false" ]; then
+              EXTRA_FLAGS+=("--without-oboe")
+            fi
+            if [ "${{ inputs.with_video }}" = "false" ]; then
+              EXTRA_FLAGS+=("--without-video")
+            fi
+          fi
+
+          echo "Bắt đầu build với target: ${TARGET} ${EXTRA_FLAGS[*]}"
+          ./build.sh "${TARGET}" --rebuild "${EXTRA_FLAGS[@]}"
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: pjsip-android
+          path: output/android/
+          if-no-files-found: ignore
+
+      - name: Upload iOS Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: pjsip-ios
+          path: output/ios/
+          if-no-files-found: ignore
+
+      - name: Upload Build Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: build-logs
+          path: logs/
+          if-no-files-found: ignore

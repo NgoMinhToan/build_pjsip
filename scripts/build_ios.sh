@@ -19,7 +19,7 @@ source "${PROJECT_ROOT}/config.default.sh"
 # Nhận các biến môi trường hoặc override
 PJSIP_VERSION="${PJSIP_VERSION:-2.16}"
 ENABLE_SSL="${ENABLE_SSL:-yes}"
-ENABLE_VIDEO="${ENABLE_VIDEO:-no}"
+ENABLE_VIDEO="${ENABLE_VIDEO:-yes}"
 IOS_MIN_VERSION="${IOS_MIN_VERSION:-13.0}"
 IOS_TARGETS="${IOS_TARGETS:-device simulator catalyst macos}"
 RESUME_MODE="${RESUME_MODE:-1}"
