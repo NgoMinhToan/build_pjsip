@@ -13,7 +13,7 @@ OBOE_VERSION="${OBOE_VERSION:-1.10.0}"
 
 # --- Tính năng chung ---
 ENABLE_SSL="${ENABLE_SSL:-yes}"        # yes / no
-ENABLE_VIDEO="${ENABLE_VIDEO:-no}"      # yes / no
+ENABLE_VIDEO="${ENABLE_VIDEO:-yes}"     # yes / no (Bật mặc định để hỗ trợ Video Call / pjsua_vid)
 
 # --- Cấu hình Android ---
 ENABLE_OBOE="${ENABLE_OBOE:-yes}"      # yes / no (Hỗ trợ audio low-latency Oboe trên Android)

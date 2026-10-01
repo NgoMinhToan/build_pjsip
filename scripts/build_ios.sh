@@ -95,25 +95,19 @@ prepare_config_site() {
     git reset --hard HEAD >/dev/null 2>&1
     git clean -fxd >/dev/null 2>&1
 
-    cat << EOF > pjlib/include/pj/config_site.h
-#define PJ_HAS_SSL_SOCK 1
-#undef PJ_SSL_SOCK_IMP
-#define PJ_SSL_SOCK_IMP PJ_SSL_SOCK_IMP_APPLE
-#include <pj/config_site_sample.h>
-EOF
-
-    if [ "$is_iphone" = "YES" ]; then
-        sed -i '' -e '1i\
-#define PJ_CONFIG_IPHONE 1
-' pjlib/include/pj/config_site.h
-    fi
-
-    if [ "$has_video" = "YES" ]; then
-        sed -i '' -e '1i\
-#define PJMEDIA_HAS_VIDEO 1 \
-#define PJMEDIA_HAS_VID_TOOLBOX_CODEC 1
-' pjlib/include/pj/config_site.h
-    fi
+    {
+        if [ "$is_iphone" = "YES" ]; then
+            echo "#define PJ_CONFIG_IPHONE 1"
+        fi
+        if [ "$has_video" = "YES" ]; then
+            echo "#define PJMEDIA_HAS_VIDEO 1"
+            echo "#define PJMEDIA_HAS_VID_TOOLBOX_CODEC 1"
+        fi
+        echo "#define PJ_HAS_SSL_SOCK 1"
+        echo "#undef PJ_SSL_SOCK_IMP"
+        echo "#define PJ_SSL_SOCK_IMP PJ_SSL_SOCK_IMP_APPLE"
+        echo "#include <pj/config_site_sample.h>"
+    } > pjlib/include/pj/config_site.h
 }
 
 # 2. Build iOS Device (arm64)
@@ -383,7 +377,7 @@ Name: libpjproject
 Description: Multimedia communication library (Apple / iOS)
 URL: http://www.pjsip.org
 Version: ${PJSIP_VERSION}
-Libs: -lpjproject -framework Security -framework Network -framework AudioToolbox -framework Foundation
+Libs: -lpjproject -framework Security -framework Network -framework AudioToolbox -framework Foundation -framework VideoToolbox -framework CoreVideo -framework CoreMedia -framework AVFoundation
 Cflags: -DPJ_AUTOCONF=1
 EOF
 

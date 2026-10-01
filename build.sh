@@ -65,8 +65,8 @@ show_help() {
     echo -e "  --oboe-version <v>      Phiên bản Oboe cho Android (1.10.0 hoặc 1.9.3)"
     echo -e "  --with-oboe             Bật hỗ trợ Oboe audio low-latency (Android)"
     echo -e "  --without-oboe          Tắt hỗ trợ Oboe"
-    echo -e "  --with-video            Bật hỗ trợ Video (VideoToolbox / Media)"
-    echo -e "  --without-video         Tắt hỗ trợ Video (Mặc định: tắt)"
+    echo -e "  --with-video            Bật hỗ trợ Video (VideoToolbox / Media) (Mặc định: BẬT)"
+    echo -e "  --without-video         Tắt hỗ trợ Video"
     echo -e "  --with-ssl              Bật hỗ trợ SSL/TLS (Mặc định: bật)"
     echo -e "  --without-ssl           Tắt hỗ trợ SSL/TLS\n"
 
