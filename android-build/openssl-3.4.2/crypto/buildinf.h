@@ -11,7 +11,7 @@
  */
 
 #define PLATFORM "platform: android-x86_64"
-#define DATE "built on: Wed Mar 11 06:53:44 2026 UTC"
+#define DATE "built on: Mon Mar 23 10:46:25 2026 UTC"
 
 /*
  * Generate compiler_flags as an array of individual characters. This is a
@@ -20,7 +20,7 @@
  */
 static const char compiler_flags[] = {
     'c','o','m','p','i','l','e','r',':',' ','x','8','6','_','6','4',
-    '-','l','i','n','u','x','-','a','n','d','r','o','i','d','3','5',
+    '-','l','i','n','u','x','-','a','n','d','r','o','i','d','2','4',
     '-','c','l','a','n','g',' ','-','f','P','I','C',' ','-','p','t',
     'h','r','e','a','d',' ','-','W','a',',','-','-','n','o','e','x',
     'e','c','s','t','a','c','k',' ','-','Q','u','n','u','s','e','d',
@@ -31,5 +31,5 @@ static const char compiler_flags[] = {
     'S','S','L','_','B','U','I','L','D','I','N','G','_','O','P','E',
     'N','S','S','L',' ','-','D','N','D','E','B','U','G',' ','-','D',
     '_','_','A','N','D','R','O','I','D','_','A','P','I','_','_','=',
-    '3','5','\0'
+    '2','4','\0'
 };

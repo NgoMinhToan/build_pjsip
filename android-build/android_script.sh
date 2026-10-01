@@ -30,7 +30,8 @@ ls lib
 cd $PJPROJECT_DIR
 
 make distclean
-./configure-android --use-ndk-cflags -with-ssl=$OPENSSL_DIR --with-oboe=$OBOE_DIR
+./configure-android --use-ndk-cflags -with-ssl=$OPENSSL_DIR
+#  --with-oboe=$OBOE_DIR
 make dep && make clean && make
 
 SAMPLE_PROJECT_DIR=$PJPROJECT_DIR/pjsip-apps/src/swig/java/android
@@ -39,5 +40,5 @@ cd $PJPROJECT_DIR/pjsip-apps/src/swig
 make clean && make
 
 cp -v $OPENSSL_DIR/lib/*.so $SAMPLE_PROJECT_DIR/pjsua2/src/main/jniLibs/$TARGET_ABI
-cp -v $OBOE_DIR/prefab/modules/oboe/libs/android.$TARGET_ABI/*.so $SAMPLE_PROJECT_DIR/pjsua2/src/main/jniLibs/$TARGET_ABI
+# cp -v $OBOE_DIR/prefab/modules/oboe/libs/android.$TARGET_ABI/*.so $SAMPLE_PROJECT_DIR/pjsua2/src/main/jniLibs/$TARGET_ABI
 ls $SAMPLE_PROJECT_DIR/pjsua2/src/main/jniLibs/$TARGET_ABI

@@ -19,12 +19,12 @@ our %config = (
         "rs"
     ],
     "ASFLAGS" => [],
-    "CC" => "x86_64-linux-android35-clang",
+    "CC" => "x86_64-linux-android24-clang",
     "CFLAGS" => [
         "-Wall -O3"
     ],
     "CPPDEFINES" => [
-        "__ANDROID_API__=35"
+        "__ANDROID_API__=24"
     ],
     "CPPFLAGS" => [],
     "CPPINCLUDES" => [],
@@ -235,14 +235,14 @@ our %config = (
     ],
     "openssl_sys_defines" => [],
     "openssldir" => "",
-    "options" => "-D__ANDROID_API__=35 no-acvp-tests no-afalgeng no-asan no-brotli no-brotli-dynamic no-buildtest-c++ no-crypto-mdebug no-crypto-mdebug-backtrace no-demos no-devcryptoeng no-ec_nistp_64_gcc_128 no-egd no-external-tests no-fips no-fips-post no-fips-securitychecks no-fuzz-afl no-fuzz-libfuzzer no-h3demo no-jitter no-ktls no-md2 no-msan no-pie no-rc5 no-sctp no-ssl3 no-ssl3-method no-tfo no-trace no-ubsan no-unit-test no-uplink no-weak-ssl-ciphers no-winstore no-zlib no-zlib-dynamic no-zstd no-zstd-dynamic",
+    "options" => "-D__ANDROID_API__=24 no-acvp-tests no-afalgeng no-asan no-brotli no-brotli-dynamic no-buildtest-c++ no-crypto-mdebug no-crypto-mdebug-backtrace no-demos no-devcryptoeng no-ec_nistp_64_gcc_128 no-egd no-external-tests no-fips no-fips-post no-fips-securitychecks no-fuzz-afl no-fuzz-libfuzzer no-h3demo no-jitter no-ktls no-md2 no-msan no-pie no-rc5 no-sctp no-ssl3 no-ssl3-method no-tfo no-trace no-ubsan no-unit-test no-uplink no-weak-ssl-ciphers no-winstore no-zlib no-zlib-dynamic no-zstd no-zstd-dynamic",
     "patch" => "2",
     "perl_archname" => "darwin-thread-multi-2level",
     "perl_cmd" => "perl",
     "perl_version" => "5.34.1",
     "perlargv" => [
         "android-x86_64",
-        "-D__ANDROID_API__=35"
+        "-D__ANDROID_API__=24"
     ],
     "perlenv" => {
         "AR" => undef,
