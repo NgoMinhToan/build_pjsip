@@ -1,3 +1,33 @@
-pjsip_sdk
-output
-android-build/pjproject
+# Output & Artifacts
+output/
+pjsip_sdk/
+
+# Build Directories & Temporary Files (Xuất hiện trong lúc build)
+android-build/
+ios-build/
+apple-build/
+pjproject-apple-platforms/
+build/
+build_temp/
+*.log
+logs/
+.build_state/
+
+# Downloaded Archives (Oboe, OpenSSL, NDK)
+*.aar
+*.tar.gz
+*.zip
+
+# Local Developer Configuration
+config.local.sh
+
+# Old Build Archive
+old_build/
+
+# System & IDE files
+.DS_Store
+*.swp
+*~
+.idea/
+*.sublime-project
+*.sublime-workspace
