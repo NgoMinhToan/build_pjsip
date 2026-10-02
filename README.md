@@ -101,7 +101,7 @@ Bộ công cụ tự động hóa biên dịch [PJSIP](https://www.pjsip.org/) h
 ```
 build_pjsip/
 ├── build.sh                   # [CLI chính] Entrypoint duy nhất điều khiển toàn bộ hệ thống
-├── config.default.sh          # [Config] Thiết lập mặc định (PJSIP 2.16, OpenSSL 3.4.2, NDK r28b...)
+├── config.default.sh          # [Config] Thiết lập mặc định (PJSIP 2.17, OpenSSL 3.4.2, NDK r28b...)
 ├── scripts/                   # [Modules]
 │   ├── common.sh              # Quản lý logging, ANSI live-tail, checkpoint/resume, NDK detection
 │   ├── build_android.sh       # Engine build Android (OpenSSL, Oboe, PJSIP, SWIG Java)

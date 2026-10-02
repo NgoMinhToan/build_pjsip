@@ -60,7 +60,7 @@ show_help() {
     echo -e "  ${C_GREEN}status${C_RESET}              Kiểm tra tiến độ và các giai đoạn đã hoàn thành\n"
 
     echo -e "${C_WHITE}${C_BOLD}TÙY CHỌN PHIÊN BẢN & TÍNH NĂNG:${C_RESET}"
-    echo -e "  --pjsip-version <v>     Phiên bản PJSIP git tag/branch (Mặc định: 2.16)"
+    echo -e "  --pjsip-version <v>     Phiên bản PJSIP git tag/branch (Mặc định: 2.17)"
     echo -e "  --openssl-version <v>   Phiên bản OpenSSL (Mặc định: 3.4.2)"
     echo -e "  --oboe-version <v>      Phiên bản Oboe cho Android (1.10.0 hoặc 1.9.3)"
     echo -e "  --with-oboe             Bật hỗ trợ Oboe audio low-latency (Android)"
