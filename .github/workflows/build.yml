@@ -1,4 +1,4 @@
-name: Build PJSIP (Android & iOS)
+name: Build & Release PJSIP (Android & iOS)
 
 'on':
   push:
@@ -13,6 +13,11 @@ name: Build PJSIP (Android & iOS)
       - master
   workflow_dispatch:
     inputs:
+      release_version:
+        description: 'Số phiên bản Release (vd: 2.16.1 - để trống sẽ tự sinh theo run_number)'
+        required: false
+        default: ''
+        type: string
       target:
         description: 'Mục tiêu biên dịch (all, android, ios)'
         required: true
@@ -33,19 +38,24 @@ name: Build PJSIP (Android & iOS)
         default: true
         type: boolean
 
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Build PJSIP Libraries
+    name: Build & Release PJSIP
     runs-on: macos-14
     timeout-minutes: 180
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -127,3 +137,126 @@ jobs:
           name: build-logs
           path: logs/
           if-no-files-found: ignore
+
+      - name: Prepare Release Packages & Notes
+        if: github.event_name != 'pull_request' && success()
+        run: |
+          # 1. Xác định phiên bản
+          PJSIP_BASE_VER=$(grep 'PJSIP_VERSION=' config.default.sh | head -n1 | cut -d'"' -f2)
+          PJSIP_BASE_VER="${PJSIP_BASE_VER:-2.16}"
+
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
+            RELEASE_VER="${TAG_NAME#v}"
+          elif [ -n "${{ inputs.release_version }}" ]; then
+            RELEASE_VER="${{ inputs.release_version }}"
+            TAG_NAME="v${RELEASE_VER#v}"
+          else
+            RELEASE_VER="${PJSIP_BASE_VER}.${{ github.run_number }}"
+            TAG_NAME="v${RELEASE_VER}"
+          fi
+
+          echo "RELEASE_TAG=${TAG_NAME}" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=${RELEASE_VER}" >> $GITHUB_ENV
+
+          # 2. Đóng gói Release Assets
+          mkdir -p release-assets
+
+          if [ -d "output/android" ]; then
+            echo "Đang đóng gói pjsip-android-${RELEASE_VER}.zip..."
+            (cd output/android && zip -r -q "../../release-assets/pjsip-android-${RELEASE_VER}.zip" ./*)
+          fi
+
+          if [ -d "output/ios" ]; then
+            echo "Đang đóng gói pjsip-ios-${RELEASE_VER}.zip..."
+            (cd output/ios && zip -r -q "../../release-assets/pjsip-ios-${RELEASE_VER}.zip" ./*)
+          fi
+
+          if [ -d "logs" ]; then
+            echo "Đang đóng gói pjsip-build-logs-${RELEASE_VER}.zip..."
+            zip -r -q "release-assets/pjsip-build-logs-${RELEASE_VER}.zip" logs/
+          fi
+
+          # 3. Tạo SHA-256 Checksums
+          (
+            cd release-assets
+            shasum -a 256 *.zip > SHA256SUMS.txt
+          )
+
+          # 4. Sinh Release Notes Markdown
+          cat << EOF > release_notes.md
+          ## 🚀 PJSIP Mobile SDK Release \`${TAG_NAME}\`
+
+          Thư viện PJSIP hoàn chỉnh dành cho **Android** và các nền tảng **Apple** (iOS, Simulator, Mac Catalyst, macOS), sẵn sàng tích hợp trực tiếp vào ứng dụng Mobile và React Native.
+
+          ---
+
+          ### 📦 Các tệp đính kèm (Assets)
+
+          | Tệp tải về | Nền tảng | Mô tả |
+          | :--- | :--- | :--- |
+          | **\`pjsip-android-${RELEASE_VER}.zip\`** | **Android** | \`jniLibs\` (4 ABIs) + Java Bindings (\`src/main/java\`) |
+          | **\`pjsip-ios-${RELEASE_VER}.zip\`** | **Apple Platforms** | Universal \`libpjproject.xcframework\` (4 slices) + Headers + Pkg-config |
+          | **\`pjsip-build-logs-${RELEASE_VER}.zip\`** | **Logs** | Toàn bộ log chi tiết của từng giai đoạn build |
+          | **\`SHA256SUMS.txt\`** | **Checksum** | Mã băm SHA-256 xác thực tính toàn vẹn của các gói |
+
+          ---
+
+          ### ⚙️ Thông số kỹ thuật & Cấu hình biên dịch
+
+          * **Phiên bản cốt lõi:**
+            * **PJSIP:** \`2.16\`
+            * **OpenSSL:** \`3.4.2\` (Đã bật SSL/TLS)
+            * **Oboe:** \`1.10.0\` (Audio low-latency cho Android)
+            * **Android NDK:** \`r28b\` (API Level 24+)
+          * **Apple XCFramework (Đầy đủ 4 kiến trúc):**
+            1. \`ios-arm64\`: Thiết bị iPhone / iPad thật
+            2. \`ios-arm64_x86_64-simulator\`: Universal iOS Simulator (hỗ trợ cả Apple Silicon M-series & Intel)
+            3. \`ios-arm64_x86_64-maccatalyst\`: Mac Catalyst Universal
+            4. \`macos-arm64_x86_64\`: macOS Universal
+          * **Video Hardware Acceleration:**
+            * Đã kích hoạt Apple **VideoToolbox** (\`PJMEDIA_HAS_VIDEO 1\`, \`PJMEDIA_HAS_VID_TOOLBOX_CODEC 1\`).
+            * Khắc phục triệt để lỗi thiếu symbol: \`_pjsua_vid_dev_count\`, \`_pjsua_vid_dev_set_setting\`, \`_pjsua_vid_win_set_size\`.
+
+          ---
+
+          ### 🛠 Hướng dẫn tích hợp nhanh
+
+          #### 1. Dành cho Android
+          1. Giải nén \`pjsip-android-${RELEASE_VER}.zip\`.
+          2. Sao chép thư mục \`src/main/jniLibs\` vào: \`app/src/main/jniLibs/\`.
+          3. Sao chép thư mục \`src/main/java\` vào: \`app/src/main/java/\`.
+
+          #### 2. Dành cho iOS / Apple Platforms
+          1. Giải nén \`pjsip-ios-${RELEASE_VER}.zip\`.
+          2. Kéo thả \`libpjproject.xcframework\` vào target Xcode của bạn trong mục **Frameworks, Libraries, and Embedded Content** (chọn *Do Not Embed*).
+          3. Trong mục **Build Phases -> Link Binary With Libraries**, liên kết các Frameworks của Apple:
+             - \`AudioToolbox.framework\`, \`AVFoundation.framework\`, \`CoreAudio.framework\`
+             - \`CoreMedia.framework\`, \`CoreVideo.framework\`, \`VideoToolbox.framework\`
+             - \`Network.framework\`, \`Security.framework\`, \`libresolv.tbd\`
+
+          ---
+
+          ### 🔐 SHA-256 Checksums
+
+          ```text
+          $(cat release-assets/SHA256SUMS.txt)
+          ```
+
+          ---
+          *Bản phát hành tự động được tạo bởi GitHub Actions: Run #${{ github.run_number }} (Commit: ${{ github.sha }})*
+          EOF
+
+      - name: Publish GitHub Release
+        if: github.event_name != 'pull_request' && success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: PJSIP SDK ${{ env.RELEASE_TAG }} (Android & Apple Platforms)
+          body_path: release_notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
