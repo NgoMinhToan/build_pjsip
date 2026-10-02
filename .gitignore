@@ -31,3 +31,4 @@ old_build/
 .idea/
 *.sublime-project
 *.sublime-workspace
+.claude/worktrees/

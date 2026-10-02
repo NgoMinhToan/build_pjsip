@@ -144,8 +144,10 @@ jobs:
         if: github.event_name != 'pull_request' && success()
         run: |
           # 1. Xác định phiên bản
-          PJSIP_BASE_VER=$(grep 'PJSIP_VERSION=' config.default.sh | head -n1 | cut -d'"' -f2)
-          PJSIP_BASE_VER="${PJSIP_BASE_VER:-2.16}"
+          source config.default.sh 2>/dev/null || true
+          PJSIP_BASE_VER="${PJSIP_VERSION:-2.17}"
+          PJSIP_BASE_VER=$(echo "${PJSIP_BASE_VER}" | sed -E 's/.*:-([^"}]+).*/\1/' | tr -d '"$}{')
+          PJSIP_BASE_VER="${PJSIP_BASE_VER:-2.17}"
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF_NAME}"
@@ -207,7 +209,7 @@ jobs:
           ### ⚙️ Thông số kỹ thuật & Cấu hình biên dịch
 
           * **Phiên bản cốt lõi:**
-            * **PJSIP:** \`2.16\`
+            * **PJSIP:** \`${PJSIP_BASE_VER}\`
             * **OpenSSL:** \`3.4.2\` (Đã bật SSL/TLS)
             * **Oboe:** \`1.10.0\` (Audio low-latency cho Android)
             * **Android NDK:** \`r28b\` (API Level 24+)

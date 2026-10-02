@@ -7,7 +7,7 @@
 # ==============================================================================
 
 # --- Phiên bản thư viện ---
-PJSIP_VERSION="${PJSIP_VERSION:-2.16}"
+PJSIP_VERSION="${PJSIP_VERSION:-2.17}"
 OPENSSL_VERSION="${OPENSSL_VERSION:-3.4.2}"
 OBOE_VERSION="${OBOE_VERSION:-1.10.0}"
 
