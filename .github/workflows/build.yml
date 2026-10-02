@@ -13,11 +13,6 @@ name: Build & Release PJSIP (Android & iOS)
       - master
   workflow_dispatch:
     inputs:
-      release_version:
-        description: 'Số phiên bản Release (vd: 2.16.1 - để trống sẽ tự sinh theo run_number)'
-        required: false
-        default: ''
-        type: string
       target:
         description: 'Mục tiêu biên dịch (all, android, ios)'
         required: true
@@ -27,13 +22,76 @@ name: Build & Release PJSIP (Android & iOS)
           - all
           - android
           - ios
-      with_oboe:
-        description: 'Bật hỗ trợ Oboe audio low-latency (Android)'
+      pjsip_version:
+        description: 'Phiên bản PJSIP tag/branch (vd: 2.16, 2.17, master)'
+        required: false
+        default: '2.16'
+        type: string
+      release_version:
+        description: 'Số phiên bản Release (vd: 2.16.0 - để trống sẽ tự sinh dạng <pjsip_ver>.<run_number>)'
+        required: false
+        default: ''
+        type: string
+      with_video:
+        description: 'Bật Video Support (Apple VideoToolbox / Media)'
         required: false
         default: true
         type: boolean
-      with_video:
-        description: 'Bật hỗ trợ Video (VideoToolbox / Media)'
+      with_ssl:
+        description: 'Bật SSL/TLS (OpenSSL trên Android, Apple Security trên iOS)'
+        required: false
+        default: true
+        type: boolean
+      openssl_version:
+        description: 'Phiên bản OpenSSL cho Android (mặc định: 3.4.2)'
+        required: false
+        default: '3.4.2'
+        type: string
+      with_oboe:
+        description: 'Bật Oboe audio low-latency (chỉ dành cho Android)'
+        required: false
+        default: true
+        type: boolean
+      oboe_version:
+        description: 'Phiên bản Oboe cho Android'
+        required: false
+        default: '1.10.0'
+        type: choice
+        options:
+          - '1.10.0'
+          - '1.9.3'
+      android_abis:
+        description: 'Android ABIs (ngăn cách bởi dấu cách, vd: arm64-v8a armeabi-v7a x86_64 x86)'
+        required: false
+        default: 'arm64-v8a armeabi-v7a x86_64 x86'
+        type: string
+      android_api_level:
+        description: 'Android API Level / Min SDK (mặc định: 24)'
+        required: false
+        default: '24'
+        type: string
+      android_ndk_version:
+        description: 'Phiên bản Android NDK (mặc định: r28b)'
+        required: false
+        default: 'r28b'
+        type: string
+      ios_targets:
+        description: 'iOS/Apple Targets (chọn all hoặc: device simulator catalyst macos)'
+        required: false
+        default: 'all'
+        type: string
+      ios_min_version:
+        description: 'iOS Deployment Target tối thiểu (mặc định: 13.0)'
+        required: false
+        default: '13.0'
+        type: string
+      create_release:
+        description: 'Tự động tạo GitHub Release sau khi build xong'
+        required: false
+        default: true
+        type: boolean
+      force_rebuild:
+        description: 'Biên dịch mới hoàn toàn (--rebuild, xóa checkpoints cũ)'
         required: false
         default: true
         type: boolean
@@ -46,12 +104,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ==============================================================================
+  # GIAI ĐOẠN 1: BIÊN DỊCH THƯ VIỆN PJSIP (Android & iOS)
+  # ==============================================================================
   build:
-    name: Build & Release PJSIP
+    name: Build PJSIP (${{ inputs.target || 'all' }})
     runs-on: macos-14
     timeout-minutes: 180
-    permissions:
-      contents: write
+    outputs:
+      release_tag: ${{ steps.params.outputs.release_tag }}
+      release_version: ${{ steps.params.outputs.release_version }}
+      release_title: ${{ steps.params.outputs.release_title }}
+      should_release: ${{ steps.params.outputs.should_release }}
+      target: ${{ steps.params.outputs.target }}
+      pjsip_version: ${{ steps.params.outputs.pjsip_version }}
 
     steps:
       - name: Checkout repository
@@ -76,7 +142,7 @@ jobs:
         with:
           path: |
             android-build/android-ndk-*
-          key: ${{ runner.os }}-ndk-r28b
+          key: ${{ runner.os }}-ndk-${{ inputs.android_ndk_version || 'r28b' }}
           restore-keys: |
             ${{ runner.os }}-ndk-
 
@@ -87,7 +153,7 @@ jobs:
             android-build/openssl-*.tar.gz
             android-build/oboe-*.aar
             android-build/oboe-*.zip
-          key: ${{ runner.os }}-deps-${{ hashFiles('config.default.sh') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('config.default.sh') }}-${{ inputs.openssl_version || '3.4.2' }}-${{ inputs.oboe_version || '1.10.0' }}
           restore-keys: |
             ${{ runner.os }}-deps-
 
@@ -95,23 +161,189 @@ jobs:
         run: |
           chmod +x build.sh scripts/*.sh
 
-      - name: Execute PJSIP Build
+      - name: Determine Build Parameters & Version Info
+        id: params
         run: |
-          TARGET="all"
-          EXTRA_FLAGS=()
-
+          # 1. Thu thập và chuẩn hóa cấu hình từ trigger
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TARGET="${{ inputs.target }}"
-            if [ "${{ inputs.with_oboe }}" = "false" ]; then
-              EXTRA_FLAGS+=("--without-oboe")
-            fi
-            if [ "${{ inputs.with_video }}" = "false" ]; then
-              EXTRA_FLAGS+=("--without-video")
+            PJSIP_VER="${{ inputs.pjsip_version }}"
+            RELEASE_VER_INPUT="${{ inputs.release_version }}"
+            WITH_VIDEO="${{ inputs.with_video }}"
+            WITH_SSL="${{ inputs.with_ssl }}"
+            OPENSSL_VER="${{ inputs.openssl_version }}"
+            WITH_OBOE="${{ inputs.with_oboe }}"
+            OBOE_VER="${{ inputs.oboe_version }}"
+            ANDROID_ABIS="${{ inputs.android_abis }}"
+            ANDROID_API="${{ inputs.android_api_level }}"
+            NDK_VER="${{ inputs.android_ndk_version }}"
+            IOS_TARGETS="${{ inputs.ios_targets }}"
+            IOS_MIN_VER="${{ inputs.ios_min_version }}"
+            FORCE_REBUILD="${{ inputs.force_rebuild }}"
+            CREATE_RELEASE="${{ inputs.create_release }}"
+          else
+            TARGET="all"
+            source config.default.sh 2>/dev/null || true
+            PJSIP_VER="${PJSIP_VERSION:-2.16}"
+            RELEASE_VER_INPUT=""
+            WITH_VIDEO="true"
+            WITH_SSL="true"
+            OPENSSL_VER="3.4.2"
+            WITH_OBOE="true"
+            OBOE_VER="1.10.0"
+            ANDROID_ABIS="arm64-v8a armeabi-v7a x86_64 x86"
+            ANDROID_API="24"
+            NDK_VER="r28b"
+            IOS_TARGETS="all"
+            IOS_MIN_VER="13.0"
+            FORCE_REBUILD="true"
+            CREATE_RELEASE="true"
+          fi
+
+          # 2. Làm sạch chuỗi phiên bản PJSIP
+          PJSIP_BASE="${PJSIP_VER:-2.16}"
+          PJSIP_BASE=$(echo "${PJSIP_BASE}" | sed -E 's/.*:-([^"}]+).*/\1/' | tr -d '"$}{')
+          PJSIP_BASE="${PJSIP_BASE:-2.16}"
+
+          # 3. Xác định Release Version và Tag Name
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
+            RELEASE_VER="${TAG_NAME#v}"
+          elif [ -n "${RELEASE_VER_INPUT}" ]; then
+            RELEASE_VER="${RELEASE_VER_INPUT#v}"
+            TAG_NAME="v${RELEASE_VER}"
+          else
+            RELEASE_VER="${PJSIP_BASE}.${{ github.run_number }}"
+            TAG_NAME="v${RELEASE_VER}"
+          fi
+
+          # 4. Xác định Tiêu đề Release
+          if [ "${TARGET}" = "all" ]; then
+            RELEASE_TITLE="PJSIP SDK ${TAG_NAME} (Android & Apple Platforms)"
+          elif [ "${TARGET}" = "android" ]; then
+            RELEASE_TITLE="PJSIP SDK ${TAG_NAME} (Android)"
+          elif [ "${TARGET}" = "ios" ]; then
+            RELEASE_TITLE="PJSIP SDK ${TAG_NAME} (Apple Platforms)"
+          fi
+
+          # 5. Quyết định có tạo Release hay không
+          SHOULD_RELEASE="false"
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ "${CREATE_RELEASE}" = "true" ]; then
+            SHOULD_RELEASE="true"
+          fi
+
+          # 6. Xuất các biến cho các bước sau và Job Release
+          echo "target=${TARGET}" >> "$GITHUB_OUTPUT"
+          echo "pjsip_version=${PJSIP_BASE}" >> "$GITHUB_OUTPUT"
+          echo "release_version=${RELEASE_VER}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "release_title=${RELEASE_TITLE}" >> "$GITHUB_OUTPUT"
+          echo "should_release=${SHOULD_RELEASE}" >> "$GITHUB_OUTPUT"
+          echo "with_video=${WITH_VIDEO}" >> "$GITHUB_OUTPUT"
+          echo "with_ssl=${WITH_SSL}" >> "$GITHUB_OUTPUT"
+          echo "openssl_version=${OPENSSL_VER}" >> "$GITHUB_OUTPUT"
+          echo "with_oboe=${WITH_OBOE}" >> "$GITHUB_OUTPUT"
+          echo "oboe_version=${OBOE_VER}" >> "$GITHUB_OUTPUT"
+          echo "android_abis=${ANDROID_ABIS}" >> "$GITHUB_OUTPUT"
+          echo "android_api=${ANDROID_API}" >> "$GITHUB_OUTPUT"
+          echo "ndk_version=${NDK_VER}" >> "$GITHUB_OUTPUT"
+          echo "ios_targets=${IOS_TARGETS}" >> "$GITHUB_OUTPUT"
+          echo "ios_min_ver=${IOS_MIN_VER}" >> "$GITHUB_OUTPUT"
+          echo "force_rebuild=${FORCE_REBUILD}" >> "$GITHUB_OUTPUT"
+
+          echo "=== CẤU HÌNH BIÊN DỊCH HOÀN TẤT ==="
+          echo "Target             : ${TARGET}"
+          echo "PJSIP Version      : ${PJSIP_BASE}"
+          echo "Release Version    : ${RELEASE_VER} (Tag: ${TAG_NAME})"
+          echo "Should Release     : ${SHOULD_RELEASE}"
+          echo "==================================="
+
+      - name: Execute PJSIP Build
+        run: |
+          TARGET="${{ steps.params.outputs.target }}"
+          PJSIP_BASE="${{ steps.params.outputs.pjsip_version }}"
+          WITH_SSL="${{ steps.params.outputs.with_ssl }}"
+          OPENSSL_VER="${{ steps.params.outputs.openssl_version }}"
+          WITH_VIDEO="${{ steps.params.outputs.with_video }}"
+          WITH_OBOE="${{ steps.params.outputs.with_oboe }}"
+          OBOE_VER="${{ steps.params.outputs.oboe_version }}"
+          ANDROID_ABIS="${{ steps.params.outputs.android_abis }}"
+          ANDROID_API="${{ steps.params.outputs.android_api }}"
+          NDK_VER="${{ steps.params.outputs.ndk_version }}"
+          IOS_TARGETS="${{ steps.params.outputs.ios_targets }}"
+          IOS_MIN_VER="${{ steps.params.outputs.ios_min_ver }}"
+          FORCE_REBUILD="${{ steps.params.outputs.force_rebuild }}"
+
+          BUILD_CMD=("./build.sh" "${TARGET}")
+
+          # Chế độ build sạch hay tiếp tục
+          if [ "${FORCE_REBUILD}" = "true" ]; then
+            BUILD_CMD+=("--rebuild")
+          else
+            BUILD_CMD+=("--resume")
+          fi
+
+          # Phiên bản PJSIP
+          if [ -n "${PJSIP_BASE}" ]; then
+            BUILD_CMD+=("--pjsip-version" "${PJSIP_BASE}")
+          fi
+
+          # Cấu hình SSL / OpenSSL
+          if [ "${WITH_SSL}" = "false" ]; then
+            BUILD_CMD+=("--without-ssl")
+          else
+            BUILD_CMD+=("--with-ssl")
+            if [ "${TARGET}" = "all" ] || [ "${TARGET}" = "android" ]; then
+              if [ -n "${OPENSSL_VER}" ]; then
+                BUILD_CMD+=("--openssl-version" "${OPENSSL_VER}")
+              fi
             fi
           fi
 
-          echo "Bắt đầu build với target: ${TARGET} ${EXTRA_FLAGS[*]}"
-          ./build.sh "${TARGET}" --rebuild "${EXTRA_FLAGS[@]}"
+          # Cấu hình Video
+          if [ "${WITH_VIDEO}" = "false" ]; then
+            BUILD_CMD+=("--without-video")
+          else
+            BUILD_CMD+=("--with-video")
+          fi
+
+          # Các cờ tùy biến riêng cho Android
+          if [ "${TARGET}" = "all" ] || [ "${TARGET}" = "android" ]; then
+            if [ "${WITH_OBOE}" = "false" ]; then
+              BUILD_CMD+=("--without-oboe")
+            else
+              BUILD_CMD+=("--with-oboe")
+              if [ -n "${OBOE_VER}" ]; then
+                BUILD_CMD+=("--oboe-version" "${OBOE_VER}")
+              fi
+            fi
+
+            if [ -n "${ANDROID_ABIS}" ]; then
+              BUILD_CMD+=("--abi" "${ANDROID_ABIS}")
+            fi
+
+            if [ -n "${NDK_VER}" ]; then
+              BUILD_CMD+=("--ndk-version" "${NDK_VER}")
+            fi
+
+            if [ -n "${ANDROID_API}" ]; then
+              BUILD_CMD+=("--android-api" "${ANDROID_API}")
+            fi
+          fi
+
+          # Các cờ tùy biến riêng cho iOS / Apple Platforms
+          if [ "${TARGET}" = "all" ] || [ "${TARGET}" = "ios" ]; then
+            if [ -n "${IOS_TARGETS}" ]; then
+              BUILD_CMD+=("--target" "${IOS_TARGETS}")
+            fi
+
+            if [ -n "${IOS_MIN_VER}" ]; then
+              BUILD_CMD+=("--ios-min-version" "${IOS_MIN_VER}")
+            fi
+          fi
+
+          echo "Đang thực thi: ${BUILD_CMD[*]}"
+          "${BUILD_CMD[@]}"
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
@@ -140,58 +372,62 @@ jobs:
           path: logs/
           if-no-files-found: ignore
 
-      - name: Prepare Release Packages & Notes
-        if: github.event_name != 'pull_request' && success()
+      - name: Package Release Assets & Generate Notes
+        if: steps.params.outputs.should_release == 'true' && success()
         run: |
-          # 1. Xác định phiên bản
-          source config.default.sh 2>/dev/null || true
-          PJSIP_BASE_VER="${PJSIP_VERSION:-2.17}"
-          PJSIP_BASE_VER=$(echo "${PJSIP_BASE_VER}" | sed -E 's/.*:-([^"}]+).*/\1/' | tr -d '"$}{')
-          PJSIP_BASE_VER="${PJSIP_BASE_VER:-2.17}"
+          RELEASE_VER="${{ steps.params.outputs.release_version }}"
+          TAG_NAME="${{ steps.params.outputs.release_tag }}"
+          TARGET="${{ steps.params.outputs.target }}"
+          PJSIP_BASE="${{ steps.params.outputs.pjsip_version }}"
+          WITH_SSL="${{ steps.params.outputs.with_ssl }}"
+          OPENSSL_VER="${{ steps.params.outputs.openssl_version }}"
+          WITH_VIDEO="${{ steps.params.outputs.with_video }}"
+          WITH_OBOE="${{ steps.params.outputs.with_oboe }}"
+          OBOE_VER="${{ steps.params.outputs.oboe_version }}"
+          ANDROID_ABIS="${{ steps.params.outputs.android_abis }}"
+          ANDROID_API="${{ steps.params.outputs.android_api }}"
+          NDK_VER="${{ steps.params.outputs.ndk_version }}"
+          IOS_TARGETS="${{ steps.params.outputs.ios_targets }}"
+          IOS_MIN_VER="${{ steps.params.outputs.ios_min_ver }}"
 
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME="${GITHUB_REF_NAME}"
-            RELEASE_VER="${TAG_NAME#v}"
-          elif [ -n "${{ inputs.release_version }}" ]; then
-            RELEASE_VER="${{ inputs.release_version }}"
-            TAG_NAME="v${RELEASE_VER#v}"
-          else
-            RELEASE_VER="${PJSIP_BASE_VER}.${{ github.run_number }}"
-            TAG_NAME="v${RELEASE_VER}"
-          fi
+          mkdir -p release-packages
 
-          echo "RELEASE_TAG=${TAG_NAME}" >> $GITHUB_ENV
-          echo "RELEASE_VERSION=${RELEASE_VER}" >> $GITHUB_ENV
-
-          # 2. Đóng gói Release Assets
-          mkdir -p release-assets
-
+          # 1. Đóng gói Android .zip
           if [ -d "output/android" ]; then
             echo "Đang đóng gói pjsip-android-${RELEASE_VER}.zip..."
-            (cd output/android && zip -r -q "../../release-assets/pjsip-android-${RELEASE_VER}.zip" ./*)
+            (cd output/android && zip -r -q "../../release-packages/pjsip-android-${RELEASE_VER}.zip" ./*)
           fi
 
+          # 2. Đóng gói iOS .zip (giữ nguyên symlinks với cờ -y)
           if [ -d "output/ios" ]; then
             echo "Đang đóng gói pjsip-ios-${RELEASE_VER}.zip..."
-            (cd output/ios && zip -r -q "../../release-assets/pjsip-ios-${RELEASE_VER}.zip" ./*)
+            (cd output/ios && zip -r -y -q "../../release-packages/pjsip-ios-${RELEASE_VER}.zip" ./*)
           fi
 
+          # 3. Đóng gói Logs
           if [ -d "logs" ]; then
             echo "Đang đóng gói pjsip-build-logs-${RELEASE_VER}.zip..."
-            zip -r -q "release-assets/pjsip-build-logs-${RELEASE_VER}.zip" logs/
+            zip -r -q "release-packages/pjsip-build-logs-${RELEASE_VER}.zip" logs/
           fi
 
-          # 3. Tạo SHA-256 Checksums
+          # 4. Sinh mã băm SHA-256 Checksums
           (
-            cd release-assets
+            cd release-packages
             shasum -a 256 *.zip > SHA256SUMS.txt
           )
 
-          # 4. Sinh Release Notes Markdown
-          cat << EOF > release_notes.md
+          # 5. Sinh tài liệu Release Notes Markdown
+          TARGET_DESC="Android & Apple Platforms (iOS, Simulator, Mac Catalyst, macOS)"
+          if [ "${TARGET}" = "android" ]; then
+            TARGET_DESC="Android"
+          elif [ "${TARGET}" = "ios" ]; then
+            TARGET_DESC="Apple Platforms (iOS, Simulator, Mac Catalyst, macOS)"
+          fi
+
+          cat << EOF > release-packages/release_notes.md
           ## 🚀 PJSIP Mobile SDK Release \`${TAG_NAME}\`
 
-          Thư viện PJSIP hoàn chỉnh dành cho **Android** và các nền tảng **Apple** (iOS, Simulator, Mac Catalyst, macOS), sẵn sàng tích hợp trực tiếp vào ứng dụng Mobile và React Native.
+          Bản phát hành thư viện PJSIP hoàn chỉnh dành cho **${TARGET_DESC}**, sẵn sàng tích hợp trực tiếp vào ứng dụng Mobile và React Native.
 
           ---
 
@@ -199,37 +435,78 @@ jobs:
 
           | Tệp tải về | Nền tảng | Mô tả |
           | :--- | :--- | :--- |
-          | **\`pjsip-android-${RELEASE_VER}.zip\`** | **Android** | \`jniLibs\` (4 ABIs) + Java Bindings (\`src/main/java\`) |
-          | **\`pjsip-ios-${RELEASE_VER}.zip\`** | **Apple Platforms** | Universal \`libpjproject.xcframework\` (4 slices) + Headers + Pkg-config |
+          EOF
+
+          if [ -f "release-packages/pjsip-android-${RELEASE_VER}.zip" ]; then
+          cat << EOF >> release-packages/release_notes.md
+          | **\`pjsip-android-${RELEASE_VER}.zip\`** | **Android** | \`jniLibs\` (${ANDROID_ABIS}) + Java Bindings (\`src/main/java\`) |
+          EOF
+          fi
+
+          if [ -f "release-packages/pjsip-ios-${RELEASE_VER}.zip" ]; then
+          cat << EOF >> release-packages/release_notes.md
+          | **\`pjsip-ios-${RELEASE_VER}.zip\`** | **Apple Platforms** | Universal \`libpjproject.xcframework\` + Headers + Pkg-config |
+          EOF
+          fi
+
+          if [ -f "release-packages/pjsip-build-logs-${RELEASE_VER}.zip" ]; then
+          cat << EOF >> release-packages/release_notes.md
           | **\`pjsip-build-logs-${RELEASE_VER}.zip\`** | **Logs** | Toàn bộ log chi tiết của từng giai đoạn build |
+          EOF
+          fi
+
+          cat << EOF >> release-packages/release_notes.md
           | **\`SHA256SUMS.txt\`** | **Checksum** | Mã băm SHA-256 xác thực tính toàn vẹn của các gói |
 
           ---
 
           ### ⚙️ Thông số kỹ thuật & Cấu hình biên dịch
 
-          * **Phiên bản cốt lõi:**
-            * **PJSIP:** \`${PJSIP_BASE_VER}\`
-            * **OpenSSL:** \`3.4.2\` (Đã bật SSL/TLS)
-            * **Oboe:** \`1.10.0\` (Audio low-latency cho Android)
-            * **Android NDK:** \`r28b\` (API Level 24+)
-          * **Apple XCFramework (Đầy đủ 4 kiến trúc):**
-            1. \`ios-arm64\`: Thiết bị iPhone / iPad thật
-            2. \`ios-arm64_x86_64-simulator\`: Universal iOS Simulator (hỗ trợ cả Apple Silicon M-series & Intel)
-            3. \`ios-arm64_x86_64-maccatalyst\`: Mac Catalyst Universal
-            4. \`macos-arm64_x86_64\`: macOS Universal
-          * **Video Hardware Acceleration:**
-            * Đã kích hoạt Apple **VideoToolbox** (\`PJMEDIA_HAS_VIDEO 1\`, \`PJMEDIA_HAS_VID_TOOLBOX_CODEC 1\`).
-            * Khắc phục triệt để lỗi thiếu symbol: \`_pjsua_vid_dev_count\`, \`_pjsua_vid_dev_set_setting\`, \`_pjsua_vid_win_set_size\`.
+          * **Cốt lõi:**
+            * **Phiên bản PJSIP:** \`${PJSIP_BASE}\`
+            * **Mục tiêu biên dịch:** \`${TARGET}\`
+            * **Video Support:** \`${WITH_VIDEO}\` (Apple VideoToolbox / Media)
+            * **SSL Support:** \`${WITH_SSL}\`
+          EOF
+
+          if [ "${TARGET}" = "all" ] || [ "${TARGET}" = "android" ]; then
+          cat << EOF >> release-packages/release_notes.md
+          * **Cấu hình Android:**
+            * **OpenSSL:** \`${OPENSSL_VER}\` (SSL: \`${WITH_SSL}\`)
+            * **Oboe:** \`${OBOE_VER}\` (Bật: \`${WITH_OBOE}\`)
+            * **Android NDK:** \`${NDK_VER}\` (Min API Level: \`${ANDROID_API}\`)
+            * **ABIs:** \`${ANDROID_ABIS}\`
+          EOF
+          fi
+
+          if [ "${TARGET}" = "all" ] || [ "${TARGET}" = "ios" ]; then
+          cat << EOF >> release-packages/release_notes.md
+          * **Cấu hình Apple Platforms:**
+            * **Targets:** \`${IOS_TARGETS}\`
+            * **Deployment Target tối thiểu:** iOS \`${IOS_MIN_VER}\`
+            * **Video Acceleration:** VideoToolbox (\`PJMEDIA_HAS_VIDEO 1\`, \`PJMEDIA_HAS_VID_TOOLBOX_CODEC 1\`)
+          EOF
+          fi
+
+          cat << EOF >> release-packages/release_notes.md
 
           ---
 
           ### 🛠 Hướng dẫn tích hợp nhanh
+          EOF
+
+          if [ "${TARGET}" = "all" ] || [ "${TARGET}" = "android" ]; then
+          cat << EOF >> release-packages/release_notes.md
 
           #### 1. Dành cho Android
           1. Giải nén \`pjsip-android-${RELEASE_VER}.zip\`.
           2. Sao chép thư mục \`src/main/jniLibs\` vào: \`app/src/main/jniLibs/\`.
           3. Sao chép thư mục \`src/main/java\` vào: \`app/src/main/java/\`.
+          EOF
+          fi
+
+          if [ "${TARGET}" = "all" ] || [ "${TARGET}" = "ios" ]; then
+          cat << EOF >> release-packages/release_notes.md
 
           #### 2. Dành cho iOS / Apple Platforms
           1. Giải nén \`pjsip-ios-${RELEASE_VER}.zip\`.
@@ -238,32 +515,61 @@ jobs:
              - \`AudioToolbox.framework\`, \`AVFoundation.framework\`, \`CoreAudio.framework\`
              - \`CoreMedia.framework\`, \`CoreVideo.framework\`, \`VideoToolbox.framework\`
              - \`Network.framework\`, \`Security.framework\`, \`libresolv.tbd\`
+          EOF
+          fi
+
+          cat << EOF >> release-packages/release_notes.md
 
           ---
 
           ### 🔐 SHA-256 Checksums
 
-          ```text
-          $(cat release-assets/SHA256SUMS.txt)
-          ```
+          \`\`\`text
+          $(cat release-packages/SHA256SUMS.txt)
+          \`\`\`
 
           ---
           *Bản phát hành tự động được tạo bởi GitHub Actions: Run #${{ github.run_number }} (Commit: ${{ github.sha }})*
           EOF
 
+          echo "Đã chuẩn bị xong gói Release Packages và Release Notes."
+
+      - name: Upload Release Packages
+        if: steps.params.outputs.should_release == 'true' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: release-packages/
+
+  # ==============================================================================
+  # GIAI ĐOẠN 2: XUẤT BẢN GITHUB RELEASE (Tách biệt hoàn toàn với giai đoạn build)
+  # ==============================================================================
+  release:
+    name: Publish GitHub Release
+    needs: [build]
+    if: needs.build.outputs.should_release == 'true' && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Release Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+          path: release-packages/
+
       - name: Publish GitHub Release
-        if: github.event_name != 'pull_request' && success()
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ env.RELEASE_TAG }}
+          tag_name: ${{ needs.build.outputs.release_tag }}
           target_commitish: ${{ github.sha }}
-          name: PJSIP SDK ${{ env.RELEASE_TAG }} (Android & Apple Platforms)
-          body_path: release_notes.md
+          name: ${{ needs.build.outputs.release_title }}
+          body_path: release-packages/release_notes.md
           files: |
-            release-assets/*
+            release-packages/*.zip
+            release-packages/SHA256SUMS.txt
           draft: false
           prerelease: false
           make_latest: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

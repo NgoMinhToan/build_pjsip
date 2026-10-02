@@ -60,7 +60,7 @@ show_help() {
     echo -e "  ${C_GREEN}status${C_RESET}              Kiểm tra tiến độ và các giai đoạn đã hoàn thành\n"
 
     echo -e "${C_WHITE}${C_BOLD}TÙY CHỌN PHIÊN BẢN & TÍNH NĂNG:${C_RESET}"
-    echo -e "  --pjsip-version <v>     Phiên bản PJSIP git tag/branch (Mặc định: 2.17)"
+    echo -e "  --pjsip-version <v>     Phiên bản PJSIP git tag/branch (Mặc định: 2.16)"
     echo -e "  --openssl-version <v>   Phiên bản OpenSSL (Mặc định: 3.4.2)"
     echo -e "  --oboe-version <v>      Phiên bản Oboe cho Android (1.10.0 hoặc 1.9.3)"
     echo -e "  --with-oboe             Bật hỗ trợ Oboe audio low-latency (Android)"
@@ -78,7 +78,10 @@ show_help() {
     echo -e "                          (Ví dụ: --target device hoặc --target device,simulator)"
     echo -e "                          Hỗ trợ: device, simulator, catalyst, macos, all"
     echo -e "                          (Mặc định: đầy đủ 4 kiến trúc: ios-arm64, ios-arm64_x86_64-simulator,"
-    echo -e "                           ios-arm64_x86_64-maccatalyst, macos-arm64_x86_64)\n"
+    echo -e "                           ios-arm64_x86_64-maccatalyst, macos-arm64_x86_64)"
+    echo -e "  --android-api <level>   Android API Level / Min SDK (Mặc định: 24)"
+    echo -e "  --ndk-version <v>       Phiên bản Android NDK (Mặc định: r28b)"
+    echo -e "  --ios-min-version <v>   iOS Deployment Target tối thiểu (Mặc định: 13.0)\n"
 
     echo -e "${C_WHITE}${C_BOLD}CƠ CHẾ RESUME & DỌN DẸP:${C_RESET}"
     echo -e "  --resume                Tự động tiếp tục từ bước bị gián đoạn/sửa lỗi (Mặc định: BẬT)"
@@ -183,6 +186,18 @@ while [ $# -gt 0 ]; do
             CUSTOM_NDK="$2"
             shift 2
             ;;
+        --ndk-version)
+            CUSTOM_NDK_VERSION="$2"
+            shift 2
+            ;;
+        --android-api|--api-level|--target-sdk)
+            CUSTOM_ANDROID_API="$2"
+            shift 2
+            ;;
+        --ios-min-version)
+            CUSTOM_IOS_MIN_VERSION="$2"
+            shift 2
+            ;;
         --java-home)
             CUSTOM_JAVA="$2"
             shift 2
@@ -209,16 +224,19 @@ while [ $# -gt 0 ]; do
 done
 
 # Áp dụng các giá trị ghi đè nếu người dùng truyền
-[ -n "$CUSTOM_PJSIP_VER" ]   && PJSIP_VERSION="$CUSTOM_PJSIP_VER"
-[ -n "$CUSTOM_OPENSSL_VER" ] && OPENSSL_VERSION="$CUSTOM_OPENSSL_VER"
-[ -n "$CUSTOM_OBOE_VER" ]    && OBOE_VERSION="$CUSTOM_OBOE_VER"
-[ -n "$CUSTOM_OBOE" ]        && ENABLE_OBOE="$CUSTOM_OBOE"
-[ -n "$CUSTOM_VIDEO" ]       && ENABLE_VIDEO="$CUSTOM_VIDEO"
-[ -n "$CUSTOM_SSL" ]         && ENABLE_SSL="$CUSTOM_SSL"
-[ -n "$CUSTOM_ABIS" ]        && ANDROID_ABIS="$CUSTOM_ABIS"
-[ -n "$CUSTOM_TARGETS" ]     && IOS_TARGETS="$CUSTOM_TARGETS"
-[ -n "$CUSTOM_NDK" ]         && ANDROID_NDK_ROOT="$CUSTOM_NDK"
-[ -n "$CUSTOM_JAVA" ]        && JAVA_HOME="$CUSTOM_JAVA"
+[ -n "$CUSTOM_PJSIP_VER" ]       && PJSIP_VERSION="$CUSTOM_PJSIP_VER"
+[ -n "$CUSTOM_OPENSSL_VER" ]     && OPENSSL_VERSION="$CUSTOM_OPENSSL_VER"
+[ -n "$CUSTOM_OBOE_VER" ]        && OBOE_VERSION="$CUSTOM_OBOE_VER"
+[ -n "$CUSTOM_OBOE" ]            && ENABLE_OBOE="$CUSTOM_OBOE"
+[ -n "$CUSTOM_VIDEO" ]           && ENABLE_VIDEO="$CUSTOM_VIDEO"
+[ -n "$CUSTOM_SSL" ]             && ENABLE_SSL="$CUSTOM_SSL"
+[ -n "$CUSTOM_ABIS" ]            && ANDROID_ABIS="$CUSTOM_ABIS"
+[ -n "$CUSTOM_TARGETS" ]         && IOS_TARGETS="$CUSTOM_TARGETS"
+[ -n "$CUSTOM_NDK" ]             && ANDROID_NDK_ROOT="$CUSTOM_NDK"
+[ -n "$CUSTOM_NDK_VERSION" ]     && NDK_VERSION="$CUSTOM_NDK_VERSION"
+[ -n "$CUSTOM_ANDROID_API" ]     && ANDROID_APP_PLATFORM="$CUSTOM_ANDROID_API"
+[ -n "$CUSTOM_IOS_MIN_VERSION" ] && IOS_MIN_VERSION="$CUSTOM_IOS_MIN_VERSION"
+[ -n "$CUSTOM_JAVA" ]            && JAVA_HOME="$CUSTOM_JAVA"
 
 export PJSIP_VERSION
 export OPENSSL_VERSION
@@ -229,6 +247,9 @@ export ENABLE_SSL
 export ANDROID_ABIS
 export IOS_TARGETS
 export ANDROID_NDK_ROOT
+export NDK_VERSION
+export ANDROID_APP_PLATFORM
+export IOS_MIN_VERSION
 export JAVA_HOME
 export OUTPUT_DIR
 export RESUME_MODE="$CUSTOM_RESUME"

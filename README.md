@@ -149,3 +149,33 @@ ANDROID_NDK_ROOT="/Users/your_name/Library/Android/sdk/ndk/28.2.13676358"
 ENABLE_OBOE="yes"
 ENABLE_VIDEO="no"
 ```
+
+---
+
+## 🤖 CI/CD Tự Động & Action Tương Tác (GitHub Actions)
+
+Dự án tích hợp sẵn quy trình CI/CD hoàn chỉnh trên **GitHub Actions** (`.github/workflows/build.yml`) được chia làm 2 giai đoạn độc lập:
+1. **Giai đoạn 1 (`build`)**: Biên dịch thư viện PJSIP trên runner macOS-14, lưu cache NDK & dependencies, xuất artifacts và đóng gói các tệp phát hành (`.zip`, `SHA256SUMS.txt`).
+2. **Giai đoạn 2 (`release`)**: Tách biệt hoàn toàn, tự động tải các gói đã build, sinh tài liệu Release Notes chi tiết và xuất bản trực tiếp lên **GitHub Releases**.
+
+### Chạy Tùy Chỉnh Trực Tiếp Trên Giao Diện Web GitHub:
+Bạn có thể vào tab **Actions** -> Chọn **Build & Release PJSIP (Android & iOS)** -> Nhấn **Run workflow** để tùy chỉnh mọi thông số môi trường:
+
+| Tham số trên giao diện | Kiểu | Mặc định | Mô tả |
+| :--- | :--- | :--- | :--- |
+| **Mục tiêu biên dịch (`target`)** | Choice | `all` | Chọn `all` (cả 2), `android` (chỉ Android) hoặc `ios` (chỉ Apple) |
+| **Phiên bản PJSIP (`pjsip_version`)** | String | `2.16` | Tag hoặc nhánh PJSIP cần build (vd: `2.16`, `2.17`, `master`) |
+| **Số phiên bản Release (`release_version`)** | String | *(Tự động)* | Phiên bản phát hành tùy chỉnh (để trống sẽ sinh dạng `<pjsip_ver>.<run_number>`) |
+| **Bật Video Support (`with_video`)** | Boolean | `true` | Kích hoạt Video Call / Apple VideoToolbox / Media |
+| **Bật SSL/TLS (`with_ssl`)** | Boolean | `true` | Kích hoạt SSL/TLS (OpenSSL trên Android, Apple Security trên iOS) |
+| **Phiên bản OpenSSL (`openssl_version`)** | String | `3.4.2` | Phiên bản OpenSSL tải về cho Android |
+| **Bật Oboe Audio (`with_oboe`)** | Boolean | `true` | Bật thư viện audio độ trễ thấp Oboe cho Android |
+| **Phiên bản Oboe (`oboe_version`)** | Choice | `1.10.0` | Lựa chọn phiên bản Oboe (`1.10.0` hoặc `1.9.3`) |
+| **Android ABIs (`android_abis`)** | String | `arm64-v8a armeabi-v7a x86_64 x86` | Danh sách kiến trúc CPU Android cần build |
+| **Android API Level (`android_api_level`)** | String | `24` | Min SDK / API Level tối thiểu của Android (mặc định: 24) |
+| **Phiên bản NDK (`android_ndk_version`)** | String | `r28b` | Phiên bản Android NDK tự động tải nếu thiếu |
+| **iOS Targets (`ios_targets`)** | String | `all` | Chọn `all` hoặc kết hợp: `device simulator catalyst macos` |
+| **iOS Min Version (`ios_min_version`)** | String | `13.0` | Deployment target tối thiểu của iOS / Apple Platforms |
+| **Tạo GitHub Release (`create_release`)** | Boolean | `true` | Tự động tạo và xuất bản GitHub Release sau khi build xong |
+| **Biên dịch mới (`force_rebuild`)** | Boolean | `true` | Xóa checkpoints cũ và build sạch từ đầu (`--rebuild`) |
+

@@ -518,7 +518,7 @@ check_android_env() {
     fi
 
     # Ràng buộc: NDK >= 27 cho các phiên bản PJSIP mới (>= 2.15 hoặc master/main)
-    local current_pjsip="${PJSIP_VERSION:-2.17}"
+    local current_pjsip="${PJSIP_VERSION:-2.16}"
     local require_ndk_27=0
     if [[ "$current_pjsip" =~ ^(master|main|trunk)$ ]]; then
         require_ndk_27=1

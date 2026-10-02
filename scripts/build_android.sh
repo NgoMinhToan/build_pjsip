@@ -17,7 +17,7 @@ source "${SCRIPT_DIR}/common.sh"
 source "${PROJECT_ROOT}/config.default.sh"
 
 # Nhận các biến môi trường hoặc override
-PJSIP_VERSION="${PJSIP_VERSION:-2.17}"
+PJSIP_VERSION="${PJSIP_VERSION:-2.16}"
 OPENSSL_VERSION="${OPENSSL_VERSION:-3.4.2}"
 ENABLE_SSL="${ENABLE_SSL:-yes}"
 ENABLE_VIDEO="${ENABLE_VIDEO:-yes}"
